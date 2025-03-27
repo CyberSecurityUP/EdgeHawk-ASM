@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>EdgeHawk - Attack Surface Management/title>
+  <title>EdgeHawk - Attack Surface Management</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
@@ -145,40 +145,40 @@
   <a href="#" onclick="showPage('findings')">🔍 Findings</a>
 </div>
 <div class="user-bar">
-  👤 <span id="user-name">Usuário</span> (<span id="user-role">Cargo</span>)
+  👤 <span id="user-name">User</span> (<span id="user-role">Role</span>)
   <a href="/logout"><button>Logout</button></a>
 </div>
 <div id="main">
   <!-- Dashboard -->
   <div id="dashboard" class="page active">
     <h2>Dashboard</h2>
-    <h4>Subdomínios por domínio</h4>
+    <h4>Subdomains per domain</h4>
     <canvas id="chart-subdomains" height="150"></canvas>
-    <h4>Portas detectadas</h4>
+    <h4>Detected ports</h4>
     <canvas id="chart-ports" height="150"></canvas>
-    <h4>Vulnerabilidades por severidade</h4>
+    <h4>Vulnerabilities by severity</h4>
     <canvas id="chart-vulns" height="150"></canvas>
   </div>
 
   <!-- Scans -->
   <div id="scans" class="page">
-    <h2>Executar Scan</h2>
+    <h2>Run Scan</h2>
     <select id="scan-type">
       <option value="basic">Basic</option>
       <option value="full">Full</option>
       <option value="vuln">Vulnerability</option>
     </select>
-    <input type="text" id="domain-input" placeholder="ex: exemplo.com">
+    <input type="text" id="domain-input" placeholder="e.g.: example.com">
     <input type="file" id="file-input">
     <button onclick="startScan()">🚀 Scan</button>
     <button onclick="stopScan()">🛑 Stop Scanning</button>
-    <h3>Saída em tempo real</h3>
-    <div id="scan-output">Aguardando execução do scan...</div>
+    <h3>Real-time output</h3>
+    <div id="scan-output">Waiting for scan to start...</div>
   </div>
 
   <!-- Findings -->
   <div id="findings" class="page">
-    <h2>Resultados</h2>
+    <h2>Results</h2>
     <div id="findings-list"></div>
   </div>
 </div>
@@ -213,7 +213,7 @@
         };
         reader.readAsText(file);
       } else {
-        if (!domain) return alert("Digite um domínio.");
+        if (!domain) return alert("Enter a domain.");
         socket.send(JSON.stringify({ domain }));
       }
     };
@@ -228,7 +228,7 @@
       if (data.vulns) {
         data.vulns.forEach(v => {
           if (typeof v === 'object') {
-            out.textContent += `⚠️ ${v.template || 'Desconhecido'} [${v.severity || 'info'}]\n`;
+            out.textContent += `⚠️ ${v.template || 'Unknown'} [${v.severity || 'info'}]\n`;
           } else {
             out.textContent += `⚠️ ${v}\n`;
           }
@@ -236,7 +236,7 @@
         out.scrollTop = out.scrollHeight;
       }
       if (data.status === "done") {
-        out.textContent += `✅ Finalizado: ${data.domain}\n`;
+        out.textContent += `✅ Finished: ${data.domain}\n`;
         out.scrollTop = out.scrollHeight;
       }
     };
@@ -246,7 +246,7 @@
     if (!currentScanID) return;
     const stopSocket = new WebSocket(`ws://${location.host}/ws/stop`);
     stopSocket.onopen = () => stopSocket.send(JSON.stringify({ scan_id: currentScanID }));
-    document.getElementById('scan-output').textContent += "🛑 Scan interrompido manualmente\n";
+    document.getElementById('scan-output').textContent += "🛑 Scan manually stopped\n";
   }
 
   function loadFindings() {
@@ -258,15 +258,15 @@
         div.className = "card";
 
         const btns = `
-          <button onclick="toggleDetails(this)">Ver Detalhes</button>
-          <button onclick="deleteFinding('${entry.domain}')">Remover</button>
+          <button onclick="toggleDetails(this)">View Details</button>
+          <button onclick="deleteFinding('${entry.domain}')">Remove</button>
         `;
 
         let html = `<strong>${entry.domain}</strong> [${entry.scan_type}] ${btns}
         <div class="details hidden">`;
 
         if (entry.results.length) {
-          html += `<table><tr><th>Subdomínio</th><th>IP</th><th>Ports</th><th>Tech</th></tr>`;
+          html += `<table><tr><th>Subdomain</th><th>IP</th><th>Ports</th><th>Tech</th></tr>`;
           entry.results.forEach(r => {
             html += `<tr>
               <td>${r.subdomain}</td>
@@ -278,10 +278,10 @@
           html += `</table>`;
         }
         if (entry.vulns.length) {
-          html += `<h4>Vulnerabilidades</h4><ul>`;
+          html += `<h4>Vulnerabilities</h4><ul>`;
           entry.vulns.forEach(v => {
             if (typeof v === 'object') {
-              html += `<li>${v.template || 'Desconhecido'} [${v.severity || 'info'}]</li>`;
+              html += `<li>${v.template || 'Unknown'} [${v.severity || 'info'}]</li>`;
             } else {
               html += `<li>${v}</li>`;
             }
@@ -289,7 +289,7 @@
           html += `</ul>`;
         }
 
-        html += `<button onclick="exportCSV()">Exportar CSV</button></div>`;
+        html += `<button onclick="exportCSV()">Export CSV</button></div>`;
         div.innerHTML = html;
         container.appendChild(div);
       });
@@ -299,7 +299,7 @@
   function toggleDetails(btn) {
     const d = btn.parentElement.querySelector(".details");
     d.classList.toggle("hidden");
-    btn.textContent = d.classList.contains("hidden") ? "Ver Detalhes" : "Ocultar";
+    btn.textContent = d.classList.contains("hidden") ? "View Details" : "Hide";
   }
 
   function deleteFinding(domain) {
@@ -332,7 +332,7 @@
         type: 'bar',
         data: {
           labels: domains,
-          datasets: [{ label: 'Subdomínios encontrados', data: subCounts, backgroundColor: '#58a6ff' }]
+          datasets: [{ label: 'Subdomains found', data: subCounts, backgroundColor: '#58a6ff' }]
         }
       });
 
@@ -340,7 +340,7 @@
         type: 'line',
         data: {
           labels: domains,
-          datasets: [{ label: 'Total de portas detectadas', data: portCounts, backgroundColor: '#ffa657', borderColor: '#ffa657' }]
+          datasets: [{ label: 'Total detected ports', data: portCounts, backgroundColor: '#ffa657', borderColor: '#ffa657' }]
         }
       });
 
@@ -352,7 +352,7 @@
           document.getElementById('user-name').textContent = data.username;
           document.getElementById('user-role').textContent = data.role;
         } catch (e) {
-          console.error('Erro ao carregar dados do usuário');
+          console.error('Error loading user data');
         }
       }
 
@@ -363,7 +363,7 @@
         data: {
           labels: Object.keys(vulnSeverities),
           datasets: [{
-            label: 'Vulnerabilidades',
+            label: 'Vulnerabilities',
             data: Object.values(vulnSeverities),
             backgroundColor: ['#f85149', '#d29922', '#3fb950', '#db6d28']
           }]
