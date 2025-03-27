@@ -1,10 +1,3 @@
-Perfeito! Aqui está o `README.md` atualizado com os dados da sua organização e repositório GitHub:
-
----
-
-## 📄 `README.md`
-
-```markdown
 # 🦅 EdgeHawk - Attack Surface Management Platform
 
 **EdgeHawk** is a powerful and extensible platform for **Attack Surface Management (ASM)**, allowing security teams to discover, monitor, and analyze exposed assets across the internet in real time.
