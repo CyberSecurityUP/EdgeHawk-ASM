@@ -14,7 +14,6 @@ app = FastAPI()
 
 app.include_router(auth_router)
 
-
 findings_db = []
 scan_sessions = {}
 
@@ -56,7 +55,7 @@ async def websocket_scan(websocket: WebSocket, scan_type: str):
                 vuln_file = f"/tmp/nuclei_{uuid.uuid4()}.jsonl"
                 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
 
-                # Executa Nuclei e salva saída em arquivo
+                # Run Nuclei and save output to file
                 proc = await asyncio.create_subprocess_exec(
                     "nuclei",
                     "-u", url,
@@ -68,7 +67,7 @@ async def websocket_scan(websocket: WebSocket, scan_type: str):
                 )
                 scan_sessions[scan_id]["procs"].append(proc)
 
-                # Exibe output em tempo real
+                # Stream real-time output
                 while True:
                     line = await proc.stdout.readline()
                     if not line:
@@ -78,7 +77,7 @@ async def websocket_scan(websocket: WebSocket, scan_type: str):
 
                 await proc.wait()
 
-                # Lê arquivo final e salva nos findings
+                # Read final file and store in findings
                 vulns = []
                 if Path(vuln_file).exists():
                     with open(vuln_file, "r") as f:
@@ -99,7 +98,7 @@ async def websocket_scan(websocket: WebSocket, scan_type: str):
                 await websocket.send_json({ "status": "done", "domain": domain })
                 continue
 
-            # BASIC ou FULL
+            # BASIC or FULL scan
             await websocket.send_json({ "status": "started", "domain": item })
 
             # Subfinder
