@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EdgeHawk - Attack Surface Management/title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      margin: 0;
+      background-color: #0d1117;
+      color: #c9d1d9;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    #menu {
+      width: 220px;
+      background-color: #161b22;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      padding-top: 20px;
+    }
+
+    #menu a {
+      display: block;
+      color: #8b949e;
+      padding: 12px 20px;
+      text-decoration: none;
+      border-left: 4px solid transparent;
+    }
+
+    #menu a:hover, #menu a.active {
+      background-color: #21262d;
+      color: white;
+      border-left: 4px solid #58a6ff;
+    }
+
+    #main {
+      margin-left: 240px;
+      padding: 20px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    input, select, button {
+      background-color: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      padding: 6px 10px;
+      margin: 4px;
+      border-radius: 4px;
+    }
+
+    button:hover {
+      background-color: #30363d;
+      cursor: pointer;
+    }
+
+    #scan-output {
+      background-color: #000;
+      color: #00ff00;
+      font-family: monospace;
+      padding: 15px;
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #00ff00;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      margin-top: 10px;
+    }
+
+    .card {
+      background-color: #1c1f26;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+    }
+
+    .hidden { display: none; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 8px;
+      border: 1px solid #30363d;
+    }
+
+    th {
+      background-color: #21262d;
+    }
+
+    canvas {
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    h2, h3 {
+      border-bottom: 1px solid #30363d;
+      padding-bottom: 5px;
+    }
+    .user-bar {
+      position: absolute;
+      top: 10px;
+      right: 20px;
+      background-color: #1f1f1f;
+      padding: 8px 15px;
+      border-radius: 8px;
+      color: #ccc;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 1000;
+    }
+
+    .user-bar button {
+      background: #ff5252;
+      color: white;
+      font-weight: bold;
+      border: none;
+      border-radius: 4px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+
+    .user-bar button:hover {
+      background: #ff1744;
+    }
+  </style>
+</head>
+<body>
+<div id="menu">
+  <a href="#" class="active" onclick="showPage('dashboard')">📊 Dashboard</a>
+  <a href="#" onclick="showPage('scans')">🧪 Scans</a>
+  <a href="#" onclick="showPage('findings')">🔍 Findings</a>
+</div>
+<div class="user-bar">
+  👤 <span id="user-name">Usuário</span> (<span id="user-role">Cargo</span>)
+  <a href="/logout"><button>Logout</button></a>
+</div>
+<div id="main">
+  <!-- Dashboard -->
+  <div id="dashboard" class="page active">
+    <h2>Dashboard</h2>
+    <h4>Subdomínios por domínio</h4>
+    <canvas id="chart-subdomains" height="150"></canvas>
+    <h4>Portas detectadas</h4>
+    <canvas id="chart-ports" height="150"></canvas>
+    <h4>Vulnerabilidades por severidade</h4>
+    <canvas id="chart-vulns" height="150"></canvas>
+  </div>
+
+  <!-- Scans -->
+  <div id="scans" class="page">
+    <h2>Executar Scan</h2>
+    <select id="scan-type">
+      <option value="basic">Basic</option>
+      <option value="full">Full</option>
+      <option value="vuln">Vulnerability</option>
+    </select>
+    <input type="text" id="domain-input" placeholder="ex: exemplo.com">
+    <input type="file" id="file-input">
+    <button onclick="startScan()">🚀 Scan</button>
+    <button onclick="stopScan()">🛑 Stop Scanning</button>
+    <h3>Saída em tempo real</h3>
+    <div id="scan-output">Aguardando execução do scan...</div>
+  </div>
+
+  <!-- Findings -->
+  <div id="findings" class="page">
+    <h2>Resultados</h2>
+    <div id="findings-list"></div>
+  </div>
+</div>
+<script>
+  let currentPage = "dashboard", socket, currentScanID;
+
+  function showPage(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('#menu a').forEach(a => a.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    document.querySelector(`#menu a[onclick="showPage('${id}')"]`).classList.add('active');
+    currentPage = id;
+    if (id === "findings") loadFindings();
+    if (id === "dashboard") loadDashboard();
+  }
+
+  function startScan() {
+    const domain = document.getElementById('domain-input').value.trim();
+    const type = document.getElementById('scan-type').value;
+    const file = document.getElementById('file-input').files[0];
+    currentScanID = crypto.randomUUID();
+    const output = document.getElementById('scan-output');
+    output.textContent = '';
+
+    socket = new WebSocket(`ws://${location.host}/ws/scan/${type}`);
+    socket.onopen = () => {
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const domains = reader.result.trim().split(/\r?\n/);
+          socket.send(JSON.stringify({ domain: domains }));
+        };
+        reader.readAsText(file);
+      } else {
+        if (!domain) return alert("Digite um domínio.");
+        socket.send(JSON.stringify({ domain }));
+      }
+    };
+    socket.onmessage = e => {
+      const data = JSON.parse(e.data);
+      const out = document.getElementById('scan-output');
+      if (data.result) {
+        const { subdomain, ip, ports, tech } = data.result;
+        out.textContent += `✔️ ${subdomain} | IP: ${ip} | Ports: ${ports.join(', ')} | Tech: ${JSON.stringify(tech)}\n`;
+        out.scrollTop = out.scrollHeight;
+      }
+      if (data.vulns) {
+        data.vulns.forEach(v => {
+          if (typeof v === 'object') {
+            out.textContent += `⚠️ ${v.template || 'Desconhecido'} [${v.severity || 'info'}]\n`;
+          } else {
+            out.textContent += `⚠️ ${v}\n`;
+          }
+        });
+        out.scrollTop = out.scrollHeight;
+      }
+      if (data.status === "done") {
+        out.textContent += `✅ Finalizado: ${data.domain}\n`;
+        out.scrollTop = out.scrollHeight;
+      }
+    };
+  }
+
+  function stopScan() {
+    if (!currentScanID) return;
+    const stopSocket = new WebSocket(`ws://${location.host}/ws/stop`);
+    stopSocket.onopen = () => stopSocket.send(JSON.stringify({ scan_id: currentScanID }));
+    document.getElementById('scan-output').textContent += "🛑 Scan interrompido manualmente\n";
+  }
+
+  function loadFindings() {
+    fetch("/findings").then(r => r.json()).then(data => {
+      const container = document.getElementById("findings-list");
+      container.innerHTML = '';
+      data.forEach(entry => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        const btns = `
+          <button onclick="toggleDetails(this)">Ver Detalhes</button>
+          <button onclick="deleteFinding('${entry.domain}')">Remover</button>
+        `;
+
+        let html = `<strong>${entry.domain}</strong> [${entry.scan_type}] ${btns}
+        <div class="details hidden">`;
+
+        if (entry.results.length) {
+          html += `<table><tr><th>Subdomínio</th><th>IP</th><th>Ports</th><th>Tech</th></tr>`;
+          entry.results.forEach(r => {
+            html += `<tr>
+              <td>${r.subdomain}</td>
+              <td>${r.ip}</td>
+              <td>${(r.ports || []).join(', ')}</td>
+              <td>${JSON.stringify(r.tech)}</td>
+            </tr>`;
+          });
+          html += `</table>`;
+        }
+        if (entry.vulns.length) {
+          html += `<h4>Vulnerabilidades</h4><ul>`;
+          entry.vulns.forEach(v => {
+            if (typeof v === 'object') {
+              html += `<li>${v.template || 'Desconhecido'} [${v.severity || 'info'}]</li>`;
+            } else {
+              html += `<li>${v}</li>`;
+            }
+          });
+          html += `</ul>`;
+        }
+
+        html += `<button onclick="exportCSV()">Exportar CSV</button></div>`;
+        div.innerHTML = html;
+        container.appendChild(div);
+      });
+    });
+  }
+
+  function toggleDetails(btn) {
+    const d = btn.parentElement.querySelector(".details");
+    d.classList.toggle("hidden");
+    btn.textContent = d.classList.contains("hidden") ? "Ver Detalhes" : "Ocultar";
+  }
+
+  function deleteFinding(domain) {
+    fetch(`/findings/${domain}`, { method: "DELETE" }).then(() => loadFindings());
+  }
+
+  function exportCSV() {
+    window.location.href = "/export/csv";
+  }
+
+  function loadDashboard() {
+    fetch("/findings").then(r => r.json()).then(data => {
+      const ctx1 = document.getElementById('chart-subdomains').getContext('2d');
+      const ctx2 = document.getElementById('chart-ports').getContext('2d');
+      const ctx3 = document.getElementById('chart-vulns').getContext('2d');
+
+      const domains = data.map(e => e.domain);
+      const subCounts = data.map(e => e.results.length);
+      const portCounts = data.map(e =>
+        e.results.reduce((acc, r) => acc + (r.ports ? r.ports.length : 0), 0)
+      );
+      const vulnSeverities = {};
+      data.forEach(entry => {
+        entry.vulns.forEach(v => {
+          vulnSeverities[v.severity] = (vulnSeverities[v.severity] || 0) + 1;
+        });
+      });
+
+      new Chart(ctx1, {
+        type: 'bar',
+        data: {
+          labels: domains,
+          datasets: [{ label: 'Subdomínios encontrados', data: subCounts, backgroundColor: '#58a6ff' }]
+        }
+      });
+
+      new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: domains,
+          datasets: [{ label: 'Total de portas detectadas', data: portCounts, backgroundColor: '#ffa657', borderColor: '#ffa657' }]
+        }
+      });
+
+      async function loadUserInfo() {
+        try {
+          const res = await fetch('/api/me');
+          if (!res.ok) return;
+          const data = await res.json();
+          document.getElementById('user-name').textContent = data.username;
+          document.getElementById('user-role').textContent = data.role;
+        } catch (e) {
+          console.error('Erro ao carregar dados do usuário');
+        }
+      }
+
+      loadUserInfo();
+
+      new Chart(ctx3, {
+        type: 'pie',
+        data: {
+          labels: Object.keys(vulnSeverities),
+          datasets: [{
+            label: 'Vulnerabilidades',
+            data: Object.values(vulnSeverities),
+            backgroundColor: ['#f85149', '#d29922', '#3fb950', '#db6d28']
+          }]
+        }
+      });
+    });
+  }
+</script>
+</body>
+</html>

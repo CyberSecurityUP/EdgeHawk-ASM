@@ -1,0 +1,79 @@
+body {
+  background: #111;
+  color: #eee;
+  font-family: "Segoe UI", sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+}
+
+form {
+  background: #1e1e1e;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.4);
+  width: 100%;
+  max-width: 400px;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+input, select, button {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  background: #2a2a2a;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+}
+
+input:focus, select:focus {
+  outline: 2px solid #00bcd4;
+}
+
+button {
+  background: #00bcd4;
+  color: #111;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #00acc1;
+}
+
+a button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.navbar {
+  background: #222;
+  padding: 10px 20px;
+  color: #ccc;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #444;
+  margin-bottom: 20px;
+}
+
+.navbar button {
+  background: #ff5252;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.navbar button:hover {
+  background: #ff1744;
+}
