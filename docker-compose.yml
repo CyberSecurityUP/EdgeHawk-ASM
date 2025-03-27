@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  edgehawk:
+    build: .
+    container_name: edgehawk
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/users:/app/backend/users
+      - ./findings:/app/findings
+    restart: unless-stopped
